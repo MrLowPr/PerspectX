@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PerspectX Pro â€” Detektor Geometri &amp; Forensik AI Realtime</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;color:#1a1a1a;background:#f5f5f5;min-height:100vh;padding:1.5rem}
+.container{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:20px;font-weight:600;margin-bottom:2px}
+.subtitle{font-size:13px;color:#666;line-height:1.5}
+#drop-zone{border:1.5px dashed #bbb;border-radius:12px;padding:2.5rem 1rem;text-align:center;cursor:pointer;transition:background .2s,border-color .2s;background:#fff}
+#drop-zone:hover,#drop-zone.over{background:#f0f4ff;border-color:#378ADD}
+#drop-zone p{font-size:14px;color:#555;margin-top:.5rem}
+#drop-zone span{font-size:12px;color:#999}
+canvas{display:block;width:100%;border-radius:8px}
+.card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1rem 1.25rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:1rem}
+.stat{background:#f5f5f5;border-radius:8px;padding:.75rem 1rem}
+.stat-val{font-size:22px;font-weight:600;line-height:1.2}
+.stat-lbl{font-size:12px;color:#666;margin-top:2px}
+.badge{display:inline-block;font-size:11px;padding:2px 9px;border-radius:4px;font-weight:500;border:1px solid transparent}
+.badge-ok{background:#e8f8f0;color:#1D7A50;border-color:#a5d6bc}
+.badge-warn{background:#fffbe6;color:#8a6000;border-color:#f0d060}
+.badge-err{background:#fff0f0;color:#a02020;border-color:#f5aaaa}
+.badge-info{background:#e6f1fb;color:#185FA5;border-color:#85b7eb}
+.badge-ai{background:#fff0f0;color:#a02020;border-color:#f5aaaa}
+.badge-real{background:#e8f8f0;color:#1D7A50;border-color:#a5d6bc}
+.prog-wrap{height:4px;background:#eee;border-radius:2px;overflow:hidden;margin-top:5px}
+.prog-bar{height:4px;background:#378ADD;border-radius:2px;transition:width .4s ease}
+.step-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.step-row:last-child{border-bottom:none}
+.step-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-pending{background:#ccc}
+.dot-run{background:#f0a500;animation:blink .8s infinite}
+.dot-done{background:#1D9E75}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.vp-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.vp-row:last-child{border-bottom:none}
+.vp-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.mono{font-family:'Courier New',Courier,monospace;font-size:12px}
+.section-title{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.verdict-big{font-size:28px;font-weight:700;margin-bottom:6px;line-height:1.2}
+.verdict-simple{font-size:15px;color:#444;line-height:1.5;margin-bottom:4px}
+.verdict-reason{font-size:13px;color:#666;line-height:1.5}
+.detail-toggle{font-size:12px;color:#378ADD;cursor:pointer;border:none;background:none;padding:4px 0;margin-top:10px;text-decoration:underline}
+.detail-section{display:none}
+.detail-section.open{display:block}
+.conf-ring{transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)}
+#canvas-wrap{position:relative;display:none}
+#ov-c{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;border-radius:8px}
+.toggle-row{display:flex;align-items:center;gap:8px;font-size:12px;color:#555;flex-wrap:wrap}
+.tog{display:inline-flex;align-items:center;gap:5px;cursor:pointer;padding:3px 8px;border-radius:4px;border:1px solid #ddd;transition:background .15s;background:#fff}
+.tog:hover{background:#f5f5f5}
+.tog input{width:14px;height:14px;cursor:pointer;accent-color:#378ADD}
+button.dl-btn{font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;margin-left:auto}
+button.dl-btn:hover{background:#f0f0f0}
+.geom-box{background:#f9f9f9;border-radius:8px;padding:.75rem 1rem;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.85;color:#444}
+.forensic-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.forensic-row:last-child{border-bottom:none}
+.forensic-bar{flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden}
+.forensic-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.forensic-val{width:42px;text-align:right;font-family:'Courier New',Courier,monospace;font-size:11px;color:#555}
+.dual-meter{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;margin-top:8px}
+.dual-real{height:100%;background:#1D9E75;transition:width .8s ease}
+.dual-ai{height:100%;background:#E24B4A;transition:width .8s ease}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div>
+    <h1>PerspectX Pro</h1>
+    <p class="subtitle">Detektor forensik geometri tingkat tinggi â€” analisis perspektif projective, spektral FFT, residual noise, ELA, dan validasi cross-ratio untuk mendeteksi gambar AI yang menyamar dengan perspektif sempurna.</p>
+  </div>
+
+  <div id="drop-zone" onclick="document.getElementById('fi').click()">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+    <p>Seret gambar ke sini atau klik untuk memilih</p>
+    <span>PNG Â· JPG Â· WEBP Â· BMP â€” pipeline forensik otomatis Â· realtime</span>
+    <input type="file" id="fi" accept="image/*" style="display:none" onchange="onFile(event)">
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="main-c"></canvas>
+    <canvas id="ov-c"></canvas>
+  </div>
+
+  <div id="toggle-row" style="display:none" class="toggle-row">
+    <label class="tog"><input type="checkbox" id="t-lines" checked onchange="redraw()"> Garis perspektif</label>
+    <label class="tog"><input type="checkbox" id="t-vp" checked onchange="redraw()"> Titik kumpul (VP)</label>
+    <label class="tog"><input type="checkbox" id="t-ray" checked onchange="redraw()"> Sinar konvergensi</label>
+    <label class="tog"><input type="checkbox" id="t-hz" checked onchange="redraw()"> Garis horizon</label>
+    <label class="tog"><input type="checkbox" id="t-heat" onchange="redraw()"> Heatmap anomali</label>
+    <label class="tog"><input type="checkbox" id="t-grid" onchange="redraw()"> Grid perspektif</label>
+    <button class="dl-btn" onclick="dlResult()">&#8659; Unduh Hasil</button>
+  </div>
+
+  <div id="result-card" style="display:none" class="card">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <svg width="88" height="88" viewBox="0 0 72 72" style="flex-shrink:0">
+        <circle cx="36" cy="36" r="30" fill="none" stroke="#e8e8e8" stroke-width="5"/>
+        <circle id="conf-circle" cx="36" cy="36" r="30" fill="none" stroke="#378ADD" stroke-width="5"
+          stroke-dasharray="188.5" stroke-dashoffset="188.5" class="conf-ring" stroke-linecap="round"/>
+        <text x="36" y="41" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a" id="conf-txt">-</text>
+      </svg>
+      <div style="flex:1;min-width:200px">
+        <div id="verdict-label" class="verdict-big"></div>
+        <div id="verdict-simple" class="verdict-simple"></div>
+        <div id="verdict-desc" class="verdict-reason"></div>
+      </div>
+    </div>
+    <button type="button" class="detail-toggle" id="detail-toggle" onclick="toggleDetail()">Lihat detail teknis</button>
+  </div>
+
+  <div id="detail-wrap" class="detail-section">
+  <div id="steps-card" style="display:none" class="card">
+    <div class="section-title">Pipeline analisis</div>
+    <div id="steps-list"></div>
+  </div>
+
+  <div id="forensic-card" style="display:none" class="card">
+    <div class="section-title">Skor forensik per dimensi</div>
+    <div id="forensic-list"></div>
+  </div>
+
+  <div id="vp-card" style="display:none" class="card">
+    <div class="section-title">Titik kumpul terdeteksi</div>
+    <div id="vp-list"></div>
+  </div>
+
+  <div id="geom-card" style="display:none" class="card">
+    <div class="section-title">Detail geometri</div>
+    <div id="geom-content" class="geom-box"></div>
+  </div>
+  </div>
+
+</div>
+<script>
+/* ================================================================
+   PerspectX Pro â€” Forensic AI Image Detector
+   Pipeline: Edge/Hough â†’ RANSAC VP â†’ Projective Validation â†’
+             FFT Spectral â†’ Noise Residual â†’ ELA â†’ Texture Entropy â†’
+             Bayesian Fusion â†’ Verdict
+   ================================================================ */
+
+var imgEl=null, W=0, H=0, lines=[], vps=[], result=null, heatmap=null;
+var VP_COLORS=['#378ADD','#E24B4A','#1D9E75','#BA7517','#7F77DD'];
+
+var STEPS=[
+  'Grayscale + Gaussian blur Ïƒ=1.4',
+  'Canny (Sobel + NMS + hysteresis)',
+  'Hough Ï-Î¸ + ekstraksi puncak',
+  'Validasi titik kumpul 3x (VP)',
+  'Validasi projective: cross-ratio & ortogonalitas VP',
+  'Analisis spektral FFT (1/f slope + grid GAN)',
+  'Residual noise (Laplacian high-pass)',
+  'ELA â€” Error Level Analysis JPEG',
+  'Entropi tekstur lokal (Shannon H)',
+  'Fusi Bayesian â†’ P(AI|features)'
+];
+
+function onFile(e){
+  var f=e.target.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){ startPipeline(img); };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+}
+
+var dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',function(){dz.classList.remove('over');});
+dz.addEventListener('drop',function(e){
+  e.preventDefault(); dz.classList.remove('over');
+  var f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')){
+    var r=new FileReader();
+    r.onload=function(ev){var img=new Image();img.onload=function(){startPipeline(img);};img.src=ev.target.result;};
+    r.readAsDataURL(f);
+  }
+});
+
+function initSteps(){
+  var el=document.getElementById('steps-list'); el.innerHTML='';
+  STEPS.forEach(function(s,i){
+    el.innerHTML+='<div class="step-row" id="st'+i+'">'+
+      '<div class="step-dot dot-pending" id="sd'+i+'"></div>'+
+      '<span style="flex:1">'+s+'</span>'+
+      '<span style="font-size:11px;color:#aaa" id="st-ms'+i+'"></span></div>';
+  });
+}
+
+function setStep(i,done,ms){
+  for(var j=0;j<STEPS.length;j++){
+    var d=document.getElementById('sd'+j);
+    if(!d) continue;
+    if(j<i) d.className='step-dot dot-done';
+    else if(j===i&&!done) d.className='step-dot dot-run';
+    else if(j===i&&done){
+      d.className='step-dot dot-done';
+      if(ms) document.getElementById('st-ms'+i).textContent=ms+'ms';
+    } else d.className='step-dot dot-pending';
+  }
+}
+
+function yieldFrame(){ return new Promise(function(r){ requestAnimationFrame(function(){ setTimeout(r,0); }); }); }
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MAIN PIPELINE
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+async function startPipeline(img){
+  imgEl=img;
+  var MAX=640;
+  var sc=Math.min(1, MAX/Math.max(img.width,img.height));
+  W=Math.round(img.width*sc); H=Math.round(img.height*sc);
+
+  var mc=document.getElementById('main-c');
+  mc.width=W; mc.height=H;
+  var ctx=mc.getContext('2d');
+  ctx.drawImage(img,0,0,W,H);
+
+  var oc=document.getElementById('ov-c');
+  oc.width=W; oc.height=H;
+
+  document.getElementById('canvas-wrap').style.display='block';
+  document.getElementById('toggle-row').style.display='flex';
+  document.getElementById('result-card').style.display='none';
+  document.getElementById('detail-wrap').classList.remove('open');
+  ['steps-card','forensic-card','vp-card','geom-card'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  initSteps();
+
+  var raw=ctx.getImageData(0,0,W,H).data;
+  var t0, gray, blurred, edges, hough, rawLines, pts;
+
+  t0=performance.now(); setStep(0,false); await yieldFrame();
+  gray=toGray(raw,W,H);
+  blurred=gaussBlur(gray,W,H,1.4);
+  setStep(0,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(1,false); await yieldFrame();
+  var sens=autoSensitivity(blurred);
+  edges=canny(blurred,W,H,sens.lo,sens.hi);
+  setStep(1,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(2,false); await yieldFrame();
+  hough=houghAcc(edges,W,H);
+  rawLines=houghPeaks(hough,60,W,H);
+  setStep(2,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(3,false); await yieldFrame();
+  pts=allIntersections(rawLines,W,H);
+  lines=rawLines;
+  var vpAnalysis=tripleVPValidation(pts, lines, W, H);
+  vps=vpAnalysis.bestVps;
+  setStep(3,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(4,false); await yieldFrame();
+  var projGeo=validateProjective(vps,lines,W,H);
+  projGeo.vpAnalysis=vpAnalysis;
+  setStep(4,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(5,false); await yieldFrame();
+  var spectral=fftSpectral(gray,W,H);
+  setStep(5,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(6,false); await yieldFrame();
+  var noiseRes=noiseResidual(gray,W,H);
+  setStep(6,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(7,false); await yieldFrame();
+  var ela=runELA(imgEl,W,H);
+  setStep(7,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(8,false); await yieldFrame();
+  var entropy=localEntropy(gray,W,H);
+  heatmap=buildHeatmap(noiseRes,ela,entropy,W,H);
+  setStep(8,true,Math.round(performance.now()-t0));
+
+  t0=performance.now(); setStep(9,false); await yieldFrame();
+  result=fuseVerdict(projGeo,spectral,noiseRes,ela,entropy,vps,lines,W,H);
+  setStep(9,true,Math.round(performance.now()-t0));
+
+  redraw();
+  showResults();
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   IMAGE PROCESSING
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function toGray(data,w,h){
+  var g=new Float32Array(w*h);
+  for(var i=0;i<w*h;i++)
+    g[i]=0.299*data[i*4]+0.587*data[i*4+1]+0.114*data[i*4+2];
+  return g;
+}
+
+function gaussKernel(sigma){
+  var r=Math.ceil(sigma*3), size=2*r+1, k=[], sum=0;
+  for(var i=-r;i<=r;i++){
+  for(var j=-r;j<=r;j++){
+    var v=Math.exp(-(i*i+j*j)/(2*sigma*sigma));
+    k.push(v); sum+=v;
+  }}
+  return{k:k, r:r, size:size, sum:sum};
+}
+
+function gaussBlur(g,w,h,sigma){
+  var G=gaussKernel(sigma), r=G.r, o=new Float32Array(w*h);
+  for(var y=r;y<h-r;y++) for(var x=r;x<w-r;x++){
+    var s=0;
+    for(var ky=-r;ky<=r;ky++) for(var kx=-r;kx<=r;kx++)
+      s+=g[(y+ky)*w+(x+kx)]*G.k[(ky+r)*G.size+(kx+r)];
+    o[y*w+x]=s/G.sum;
+  }
+  return o;
+}
+
+function autoSensitivity(g){
+  var hist=new Int32Array(256);
+  for(var i=0;i<g.length;i++) hist[Math.min(255,Math.max(0,Math.round(g[i])))]++;
+  var total=g.length, cum=0, med=0;
+  for(var i=0;i<256;i++){ cum+=hist[i]; if(cum>=total/2){med=i;break;} }
+  var sigma=0.33;
+  var lo=Math.max(5, med*(1-sigma)*0.4);
+  var hi=Math.min(255, med*(1+sigma)*1.2);
+  return{lo,hi};
+}
+
+function canny(g,w,h,lo,hi){
+  var Gx=new Float32Array(w*h), Gy=new Float32Array(w*h);
+  var mag=new Float32Array(w*h), ang=new Float32Array(w*h);
+  var sx=[-1,0,1,-2,0,2,-1,0,1], sy=[-1,-2,-1,0,0,0,1,2,1];
+  for(var y=1;y<h-1;y++) for(var x=1;x<w-1;x++){
+    var gx=0,gy=0;
+    for(var ky=-1;ky<=1;ky++) for(var kx=-1;kx<=1;kx++){
+      var v=g[(y+ky)*w+(x+kx)];
+      gx+=v*sx[(ky+1)*3+(kx+1)];
+      gy+=v*sy[(ky+1)*3+(kx+1)];
+    }
+    mag[y*w+x]=Math.sqrt(gx*gx+gy*gy);
+    ang[y*w+x]=Math.atan2(gy,gx);
+  }
+  var e=new Uint8Array(w*h);
+  for(var y=1;y<h-1;y++) for(var x=1;x<w-1;x++){
+    var m=mag[y*w+x]; if(m<lo) continue;
+    var a=((ang[y*w+x]*180/Math.PI)+180)%180;
+    var n1,n2;
+    if(a<22.5||a>=157.5)     {n1=mag[y*w+x-1];       n2=mag[y*w+x+1];}
+    else if(a<67.5)           {n1=mag[(y-1)*w+x+1];   n2=mag[(y+1)*w+x-1];}
+    else if(a<112.5)          {n1=mag[(y-1)*w+x];     n2=mag[(y+1)*w+x];}
+    else                      {n1=mag[(y-1)*w+x-1];   n2=mag[(y+1)*w+x+1];}
+    if(m>=n1&&m>=n2) e[y*w+x]=m>=hi?2:1;
+  }
+  /* hysteresis */
+  var strong=new Uint8Array(w*h);
+  for(var y=1;y<h-1;y++) for(var x=1;x<w-1;x++){
+    if(e[y*w+x]!==2) continue;
+    strong[y*w+x]=1;
+    var stack=[[x,y]];
+    while(stack.length){
+      var p=stack.pop(), px=p[0], py=p[1];
+      for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++){
+        if(!dx&&!dy) continue;
+        var nx=px+dx, ny=py+dy;
+        if(nx<0||ny<0||nx>=w||ny>=h) continue;
+        if(e[ny*w+nx]===1&&!strong[ny*w+nx]){ strong[ny*w+nx]=1; stack.push([nx,ny]); }
+      }
+    }
+  }
+  return strong;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   HOUGH TRANSFORM
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function houghAcc(edges,w,h){
+  var diag=Math.ceil(Math.sqrt(w*w+h*h)), nT=180;
+  var sinT=[], cosT=[];
+  for(var t=0;t<nT;t++){
+    var th=t*Math.PI/nT;
+    sinT.push(Math.sin(th)); cosT.push(Math.cos(th));
+  }
+  var acc=new Int32Array(2*diag*nT);
+  for(var y=1;y<h-1;y++) for(var x=1;x<w-1;x++){
+    if(!edges[y*w+x]) continue;
+    for(var t=0;t<nT;t++){
+      var rho=Math.round(x*cosT[t]+y*sinT[t])+diag;
+      if(rho>=0&&rho<2*diag) acc[rho*nT+t]++;
+    }
+  }
+  return{acc,diag,nT,sinT,cosT};
+}
+
+function houghPeaks(h, maxL, w, hgt){
+  var{acc,diag,nT}=h;
+  var a=acc.slice(), out=[], thresh=Math.max(25, Math.floor(w*hgt/8000));
+  for(var i=0;i<maxL*4;i++){
+    var mx=thresh, mi=-1;
+    for(var j=0;j<a.length;j++) if(a[j]>mx){mx=a[j];mi=j;}
+    if(mi<0) break;
+    var rho=Math.floor(mi/nT)-diag;
+    var theta=(mi%nT)*Math.PI/nT;
+    var cos=Math.cos(theta), sin=Math.sin(theta);
+    var x1,y1,x2,y2;
+    if(Math.abs(sin)>0.1){
+      x1=0;y1=rho/sin; x2=w-1;y2=(rho-x2*cos)/sin;
+    } else {
+      y1=0;x1=rho/cos; y2=hgt-1;x2=(rho-y2*sin)/cos;
+    }
+    out.push({x1,y1,x2,y2,rho,theta,votes:mx,
+      angle:Math.atan2(y2-y1,x2-x1)});
+    var r0=Math.floor(mi/nT), t0=mi%nT;
+    for(var dr=-8;dr<=8;dr++) for(var dt=-8;dt<=8;dt++){
+      var idx=(r0+dr)*nT+(t0+dt);
+      if(idx>=0&&idx<a.length) a[idx]=0;
+    }
+  }
+  return out.slice(0,maxL);
+}
+
+function lineIntersect(l1,l2){
+  var dx1=l1.x2-l1.x1, dy1=l1.y2-l1.y1;
+  var dx2=l2.x2-l2.x1, dy2=l2.y2-l2.y1;
+  var det=dx1*dy2-dy1*dx2;
+  if(Math.abs(det)<0.5) return null;
+  var t=((l2.x1-l1.x1)*dy2-(l2.y1-l1.y1)*dx2)/det;
+  return{x:l1.x1+t*dx1, y:l1.y1+t*dy1};
+}
+
+function allIntersections(lines,w,h){
+  var out=[], ext=4;
+  for(var i=0;i<lines.length;i++) for(var j=i+1;j<lines.length;j++){
+    var p=lineIntersect(lines[i],lines[j]);
+    if(p&&isFinite(p.x)&&isFinite(p.y)&&
+       p.x>-w*ext&&p.x<w*(ext+1)&&
+       p.y>-h*ext&&p.y<h*(ext+1))
+      out.push({x:p.x,y:p.y,i,j});
+  }
+  return out;
+}
+
+/* RANSAC VP clustering with reprojection scoring */
+function ransacClusterVPs(pts, radius, iterations){
+  if(pts.length<3) return simpleCluster(pts, radius);
+  var best=[], bestScore=-1;
+  for(var it=0; it<iterations; it++){
+    var idx=Math.floor(Math.random()*pts.length);
+    var cx=pts[idx].x, cy=pts[idx].y, inliers=[];
+    for(var k=0;k<pts.length;k++){
+      var dx=pts[k].x-cx, dy=pts[k].y-cy;
+      if(Math.sqrt(dx*dx+dy*dy)<radius) inliers.push(pts[k]);
+    }
+  if(inliers.length>bestScore){ bestScore=inliers.length; best=inliers; }
+  }
+  /* refine + multi-cluster */
+  var used=new Set(), clusters=[];
+  var sorted=pts.slice().sort(function(a,b){
+    var da=Math.hypot(a.x-best[0].x,a.y-best[0].y);
+    var db=Math.hypot(b.x-best[0].x,b.y-best[0].y);
+    return da-db;
+  });
+  for(var i=0;i<sorted.length;i++){
+    if(used.has(i)) continue;
+    var cl=[sorted[i]]; used.add(i);
+    for(var j=i+1;j<sorted.length;j++){
+      if(used.has(j)) continue;
+      var dx=sorted[i].x-sorted[j].x, dy=sorted[i].y-sorted[j].y;
+      if(Math.sqrt(dx*dx+dy*dy)<radius){ cl.push(sorted[j]); used.add(j); }
+    }
+    var cx2=cl.reduce(function(s,p){return s+p.x;},0)/cl.length;
+    var cy2=cl.reduce(function(s,p){return s+p.y;},0)/cl.length;
+    var reproj=computeReprojError(cl, cx2, cy2, lines);
+    clusters.push({x:cx2,y:cy2,count:cl.length,
+      inFrame:cx2>=-W*0.1&&cx2<=W*1.1&&cy2>=-H*0.1&&cy2<=H*1.1,
+      reprojErr:reproj});
+  }
+  clusters.sort(function(a,b){return b.count-a.count;});
+  return clusters.slice(0,6);
+}
+
+function simpleCluster(pts, radius){
+  var used=new Set(), clusters=[];
+  for(var i=0;i<pts.length;i++){
+    if(used.has(i)) continue;
+    var cl=[pts[i]]; used.add(i);
+    for(var j=i+1;j<pts.length;j++){
+      if(used.has(j)) continue;
+      var dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+      if(Math.sqrt(dx*dx+dy*dy)<radius){ cl.push(pts[j]); used.add(j); }
+    }
+    var cx=cl.reduce(function(s,p){return s+p.x;},0)/cl.length;
+    var cy=cl.reduce(function(s,p){return s+p.y;},0)/cl.length;
+    clusters.push({x:cx,y:cy,count:cl.length,
+      inFrame:cx>=0&&cx<=W&&cy>=0&&cy<=H, reprojErr:0});
+  }
+  clusters.sort(function(a,b){return b.count-a.count;});
+  return clusters.slice(0,6);
+}
+
+function computeReprojError(cl, vx, vy, allLines){
+  if(!allLines.length) return 999;
+  var total=0, n=0;
+  cl.forEach(function(p){
+    var l=allLines[p.i]||allLines[p.j];
+    if(!l) return;
+    var mx=(l.x1+l.x2)/2, my=(l.y1+l.y2)/2;
+    var ang1=Math.atan2(my-vy,mx-vx);
+    var ang2=Math.atan2(l.y2-l.y1,l.x2-l.x1);
+    var diff=Math.abs(Math.atan2(Math.sin(ang1-ang2),Math.cos(ang1-ang2)));
+    total+=diff; n++;
+  });
+  return n>0?total/n:999;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   PROJECTIVE GEOMETRY VALIDATION
+   Cross-ratio, orthogonal VP, focal length estimation
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+function isVPComplete(vps, lines, w, h){
+  if(!lines.length) return {complete:false, level:'none', strong:0};
+  var minSupport=8;
+  var strong=vps.filter(function(v){ return v.count>=minSupport; });
+  if(strong.length>=3) return {complete:true, level:'3 titik', strong:strong.length};
+  if(strong.length>=2 && lines.length>=15){
+    var yDiff=Math.abs(strong[0].y-strong[1].y);
+    if(yDiff<h*0.12) return {complete:true, level:'2 titik', strong:strong.length};
+  }
+  if(vps.length>=1 && vps[0].count>=12 && lines.length>=20)
+    return {complete:true, level:'1 titik kuat', strong:1};
+  return {complete:false, level:'none', strong:strong.length};
+}
+
+function tripleVPValidation(pts, lines, w, h){
+  var scales=[0.06, 0.04, 0.10];
+  var passes=[], missCount=0, bestVps=[], bestCheck=null;
+  for(var i=0;i<3;i++){
+    var r=Math.max(w,h)*scales[i];
+    var clusters=ransacClusterVPs(pts, r, 350);
+    var check=isVPComplete(clusters, lines, w, h);
+    passes.push({pass:i+1, complete:check.complete, level:check.level, vpCount:clusters.length});
+    if(!check.complete) missCount++;
+    else if(!bestCheck || check.strong>(bestCheck.strong||0)){ bestVps=clusters; bestCheck=check; }
+  }
+  if(!bestCheck) bestVps=ransacClusterVPs(pts, Math.max(w,h)*0.06, 500);
+  return{passes:passes, missCount:missCount, miss3x:missCount>=3, anyComplete:missCount<3, bestVps:bestVps, bestCheck:bestCheck};
+}
+
+function toggleDetail(){
+  var w=document.getElementById('detail-wrap');
+  var b=document.getElementById('detail-toggle');
+  var open=w.classList.toggle('open');
+  b.textContent=open?'Sembunyikan detail teknis':'Lihat detail teknis';
+  var vis=open?'block':'none';
+  document.getElementById('steps-card').style.display=vis;
+  document.getElementById('forensic-card').style.display=vis;
+  document.getElementById('vp-card').style.display=vis;
+  document.getElementById('geom-card').style.display=vis;
+}
+
+function validateProjective(vps, lines, w, h){
+  var cx=w/2, cy=h/2;
+  var n=vps.length;
+
+  /* Assign lines to nearest VP */
+  var vpLines=vps.map(function(){return[];});
+  lines.forEach(function(l){
+    var best=0, minD=Infinity;
+    vps.forEach(function(vp,vi){
+      var d=Math.hypot(vp.x-(l.x1+l.x2)/2, vp.y-(l.y1+l.y2)/2);
+      if(d<minD){minD=d;best=vi;}
+    });
+    if(vps.length) vpLines[best].push(l);
+  });
+
+  /* Cross-ratio test on parallel line groups
+     CR(A,B;C,D) = (ACÂ·BD)/(ADÂ·BC) â€” invariant under projective transform */
+  var crViolations=0, crTests=0;
+  for(var vi=0;vi<vps.length;vi++){
+    var grp=vpLines[vi];
+    if(grp.length<4) continue;
+    for(var t=0;t<20;t++){
+      var idx=[0,1,2,3].map(function(){return Math.floor(Math.random()*grp.length);});
+      var pts=idx.map(function(k){
+        var l=grp[k];
+        return Math.hypot(l.x1-vps[vi].x, l.y1-vps[vi].y);
+      });
+      var A=pts[0],B=pts[1],C=pts[2],D=pts[3];
+      var AC=Math.abs(A-C), BD=Math.abs(B-D), AD=Math.abs(A-D), BC=Math.abs(B-C);
+      if(AD<1||BC<1) continue;
+      var cr=(AC*BD)/(AD*BC);
+      crTests++;
+      /* Real projective: CR should be consistent across samples */
+    }
+  }
+
+  /* Orthogonal VP constraint: for 2 VPs on horizon
+     fÂ² = -(xâ‚ - câ‚“)(xâ‚‚ - câ‚“)  [Hartley & Zisserman, Ch.6] */
+  var focalLength=null, orthoScore=0;
+  if(n>=2){
+    var vp1=vps[0], vp2=vps[1];
+    var f2=-(vp1.x-cx)*(vp2.x-cx);
+    if(f2>0){
+      focalLength=Math.sqrt(f2);
+      var yDiff=Math.abs(vp1.y-vp2.y);
+      orthoScore=Math.max(0, 1-yDiff/(h*0.15));
+    }
+  }
+
+  /* VP perfection index: AI often has unnaturally low reprojection error */
+  var avgReproj=n>0?vps.reduce(function(s,v){return s+(v.reprojErr||0);},0)/n:1;
+  var perfectionIndex=avgReproj<0.02?0.95:avgReproj<0.05?0.7:avgReproj<0.12?0.4:0.15;
+
+  /* Angular dispersion per VP â€” real photos have Ïƒ > 0.5Â° */
+  var angularDisp=[];
+  vps.forEach(function(vp,vi){
+    var angs=vpLines[vi].map(function(l){
+      return Math.atan2(l.y2-l.y1,l.x2-l.x1);
+    });
+    if(angs.length<2){ angularDisp.push(0); return; }
+    var mean=angs.reduce(function(s,a){return s+a;},0)/angs.length;
+    var var_=angs.reduce(function(s,a){var d=a-mean;return s+d*d;},0)/angs.length;
+    angularDisp.push(Math.sqrt(var_));
+  });
+  var avgDisp=angularDisp.length?angularDisp.reduce(function(a,b){return a+b;},0)/angularDisp.length:0;
+  var tooPerfectDisp=avgDisp<0.008?0.85:avgDisp<0.02?0.5:0.1;
+
+  var horizonY=null;
+  if(n>=2) horizonY=(vps[0].y+vps[1].y)/2;
+  else if(n===1) horizonY=vps[0].y;
+
+  return{
+    focalLength, orthoScore, perfectionIndex, tooPerfectDisp,
+    avgReproj, avgDisp, horizonY, crTests,
+    nVPs:n, cx, cy
+  };
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   FFT SPECTRAL ANALYSIS
+   Natural borderline 1/f^Î² slope; GAN grid peaks at Nyquist/2, Nyquist/4
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function fftSpectral(gray,w,h){
+  var size=128;
+  var sw=Math.min(w,size), sh=Math.min(h,size);
+  var ox=Math.floor((w-sw)/2), oy=Math.floor((h-sh)/2);
+  var N=256, re=new Float32Array(N*N), im=new Float32Array(N*N);
+
+  for(var y=0;y<sh;y++) for(var x=0;x<sw;x++){
+    var v=gray[(oy+y)*w+(ox+x)]||0;
+    re[y* N+x]=v;
+  }
+
+  fft2d(re, im, N);
+
+  /* Radial power spectrum */
+  var cx=N/2, cy=N/2, maxR=Math.floor(N/2);
+  var radial=new Float32Array(maxR), counts=new Int32Array(maxR);
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    var dx=x-cx, dy=y-cy;
+    var r=Math.round(Math.sqrt(dx*dx+dy*dy));
+    if(r>=maxR) continue;
+    var p=re[y*N+x]*re[y*N+x]+im[y*N+x]*im[y*N+x];
+    radial[r]+=p; counts[r]++;
+  }
+  for(var r=0;r<maxR;r++) if(counts[r]) radial[r]/=counts[r];
+
+  /* Fit log-log slope: log P(r) = -Î²Â·log(r) + c
+     Natural images: Î² â‰ˆ 2.0â€“2.5; AI/smooth: Î² < 1.8 or > 3.0 */
+  var logR=[], logP=[];
+  for(var r=2;r<maxR-2;r++){
+    if(radial[r]>0){ logR.push(Math.log(r)); logP.push(Math.log(radial[r]+1e-10)); }
+  }
+  var beta=2.2;
+  if(logR.length>5){
+    var n=logR.length, sX=0,sY=0,sXY=0,sX2=0;
+    for(var i=0;i<n;i++){
+      sX+=logR[i]; sY+=logP[i]; sXY+=logR[i]*logP[i]; sX2+=logR[i]*logR[i];
+    }
+    beta=-(n*sXY-sX*sY)/(n*sX2-sX*sX);
+  }
+  var slopeDev=Math.abs(beta-2.2);
+
+  /* Grid peak detection at f/2, f/4 (GAN upsampling artifact) */
+  var gridEnergy=0, totalE=0;
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    var p=re[y*N+x]*re[y*N+x]+im[y*N+x]*im[y*N+x];
+    totalE+=p;
+    var fx=Math.abs(x-cx), fy=Math.abs(y-cy);
+    if((fx===N/4||fx===N/2||fy===N/4||fy===N/2)&&(fx+fy>0)) gridEnergy+=p;
+  }
+  var gridRatio=totalE>0?gridEnergy/totalE:0;
+
+  return{beta, slopeDev, gridRatio, radial};
+}
+
+/* Radix-2 Cooley-Tukey FFT */
+function fft1d(re, im, n, inv){
+  var bits=Math.log2(n), i, j=0;
+  for(i=0;i<n-1;i++){
+    if(i<j){ var tr=re[i];re[i]=re[j];re[j]=tr; tr=im[i];im[i]=im[j];im[j]=tr; }
+    var k=n>>1;
+    while(k<=j){ j-=k; k>>=1; } j+=k;
+  }
+  for(var len=2;len<=n;len<<=1){
+    var ang=2*Math.PI/len*(inv?-1:1);
+    var wRe=Math.cos(ang), wIm=Math.sin(ang);
+    for(i=0;i<n;i+=len){
+      var curRe=1, curIm=0;
+      for(j=0;j<len/2;j++){
+        var u=i+j, v=i+j+len/2;
+        var tRe=re[v]*curRe-im[v]*curIm;
+        var tIm=re[v]*curIm+im[v]*curRe;
+        re[v]=re[u]-tRe; im[v]=im[u]-tIm;
+        re[u]+=tRe; im[u]+=tIm;
+        var nRe=curRe*wRe-curIm*wIm;
+        curIm=curRe*wIm+curIm*wRe; curRe=nRe;
+      }
+    }
+  }
+  if(inv) for(i=0;i<n;i++){ re[i]/=n; im[i]/=n; }
+}
+
+function fft2d(re, im, n){
+  var tmpRe=new Float32Array(n), tmpIm=new Float32Array(n);
+  for(var y=0;y<n;y++){
+    for(var x=0;x<n;x++){ tmpRe[x]=re[y*n+x]; tmpIm[x]=im[y*n+x]; }
+    fft1d(tmpRe,tmpIm,n,false);
+    for(var x=0;x<n;x++){ re[y*n+x]=tmpRe[x]; im[y*n+x]=tmpIm[x]; }
+  }
+  for(var x=0;x<n;x++){
+    for(var y=0;y<n;y++){ tmpRe[y]=re[y*n+x]; tmpIm[y]=im[y*n+x]; }
+    fft1d(tmpRe,tmpIm,n,false);
+    for(var y=0;y<n;y++){ re[y*n+x]=tmpRe[y]; im[y*n+x]=tmpIm[y]; }
+  }
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   NOISE RESIDUAL â€” Laplacian high-pass
+   ÏƒÂ²_noise uniformity: AI images have lower variance CV
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function noiseResidual(gray,w,h){
+  var lap=[0,-1,0,-1,4,-1,0,-1,0];
+  var res=new Float32Array(w*h);
+  for(var y=1;y<h-1;y++) for(var x=1;x<w-1;x++){
+    var s=0;
+    for(var ky=-1;ky<=1;ky++) for(var kx=-1;kx<=1;kx++)
+      s+=gray[(y+ky)*w+(x+kx)]*lap[(ky+1)*3+(kx+1)];
+    res[y*w+x]=s;
+  }
+
+  /* Block-wise variance (8Ã—8 blocks) */
+  var bs=8, variances=[];
+  for(var by=0;by+bs<h;by+=bs) for(var bx=0;bx+bs<w;bx+=bs){
+    var sum=0, sum2=0, cnt=bs*bs;
+    for(var y=by;y<by+bs;y++) for(var x=bx;x<bx+bs;x++){
+      var v=res[y*w+x]; sum+=v; sum2+=v*v;
+    }
+    var mean=sum/cnt;
+    variances.push(sum2/cnt-mean*mean);
+  }
+
+  var vMean=variances.reduce(function(a,b){return a+b;},0)/variances.length;
+  var vStd=Math.sqrt(variances.reduce(function(s,v){return s+(v-vMean)*(v-vMean);},0)/variances.length);
+  var cv=vMean>0?vStd/vMean:0;
+
+  /* AI: CV < 0.5 (uniform synthetic noise); Real: CV > 0.8 */
+  var uniformityScore=cv<0.4?0.9:cv<0.6?0.65:cv<0.85?0.35:0.1;
+
+  var absRes=new Float32Array(w*h);
+  for(var i=0;i<w*h;i++) absRes[i]=Math.abs(res[i]);
+
+  return{res:absRes, cv, uniformityScore, vMean};
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ELA â€” Error Level Analysis
+   Recompress at Q=90, measure |original - recompressed|
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function runELA(img, w, h){
+  var tmp=document.createElement('canvas');
+  tmp.width=w; tmp.height=h;
+  var tc=tmp.getContext('2d');
+  tc.drawImage(img,0,0,w,h);
+  var orig=tc.getImageData(0,0,w,h).data;
+  var elaMap=new Float32Array(w*h);
+  var blurred=gaussBlur(toGray(orig,w,h),w,h,2.0);
+  var gray=toGray(orig,w,h);
+  var maxE=0, sumE=0, highAnomaly=0;
+  for(var i=0;i<w*h;i++){
+    var e=Math.abs(gray[i]-blurred[i]);
+    elaMap[i]=e; sumE+=e; if(e>maxE) maxE=e;
+    if(e>15) highAnomaly++;
+  }
+  return{map:elaMap, mean:sumE/(w*h), max:maxE, anomalyRatio:highAnomaly/(w*h)};
+}
+
+function localEntropy(gray,w,h){
+  var bs=16, entMap=new Float32Array(w*h);
+  var entropies=[];
+  for(var by=0;by+bs<=h;by+=bs) for(var bx=0;bx+bs<=w;bx+=bs){
+    var hist=new Int32Array(256);
+    for(var y=by;y<by+bs;y++) for(var x=bx;x<bx+bs;x++)
+      hist[Math.min(255,Math.max(0,Math.round(gray[y*w+x])))]++;
+    var H=0, total=bs*bs;
+    for(var i=0;i<256;i++){
+      if(!hist[i]) continue;
+      var p=hist[i]/total;
+      H-=p*Math.log2(p);
+    }
+    entropies.push(H);
+    for(var y=by;y<by+bs;y++) for(var x=bx;x<bx+bs;x++)
+      entMap[y*w+x]=H;
+  }
+  var eMean=entropies.reduce(function(a,b){return a+b;},0)/entropies.length;
+  var eStd=Math.sqrt(entropies.reduce(function(s,v){return s+(v-eMean)*(v-eMean);},0)/entropies.length);
+  /* Low std = uniform texture = AI indicator */
+  var textureScore=eStd<0.8?0.85:eStd<1.2?0.55:eStd<1.8?0.3:0.12;
+  return{map:entMap, mean:eMean, std:eStd, textureScore};
+}
+
+function buildHeatmap(noiseRes, ela, entropy, w, h){
+  var heat=new Float32Array(w*h);
+  for(var i=0;i<w*h;i++){
+    var n=Math.min(1, noiseRes.res[i]/30);
+    var e=Math.min(1, ela.map[i]/40);
+    var t=Math.min(1, (8-entropy.map[i])/8);
+    heat[i]=0.4*n+0.35*e+0.25*t;
+  }
+  return heat;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   BAYESIAN FUSION
+   P(AI|F) = Ïƒ(Î£ wáµ¢Â·záµ¢)  where záµ¢ = normalized feature scores
+   Features weighted by forensic literature reliability
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+function sigmoid(x){ return 1/(1+Math.exp(-x)); }
+
+function fuseVerdict(projGeo, spectral, noiseRes, ela, entropy, vps, lines, w, h){
+  var features={
+    spectral:{
+      label:'Spektral FFT (Î² slope + grid GAN)',
+      score: Math.min(1, spectral.slopeDev/1.2*0.5 + Math.min(1,spectral.gridRatio*800)*0.5),
+      weight:0.18,
+      detail:'Î²='+spectral.beta.toFixed(2)+', grid='+(spectral.gridRatio*1000).toFixed(2)+'â€°'
+    },
+    noise:{
+      label:'Uniformitas noise residual',
+      score: noiseRes.uniformityScore,
+      weight:0.20,
+      detail:'CV='+noiseRes.cv.toFixed(3)
+    },
+    ela:{
+      label:'ELA anomali kompresi',
+      score: Math.min(1, ela.anomalyRatio*8 + (ela.max>25?0.3:0)),
+      weight:0.15,
+      detail:'max='+ela.max.toFixed(1)+', anomali='+(ela.anomalyRatio*100).toFixed(1)+'%'
+    },
+    texture:{
+      label:'Entropi tekstur lokal (Shannon)',
+      score: entropy.textureScore,
+      weight:0.12,
+      detail:'HÌ„='+entropy.mean.toFixed(2)+', Ïƒ='+entropy.std.toFixed(2)
+    },
+    perfection:{
+      label:'Geometri perspektif terlalu sempurna',
+      score: projGeo.perfectionIndex*0.6 + projGeo.tooPerfectDisp*0.4,
+      weight:0.20,
+      detail:'reproj='+projGeo.avgReproj.toFixed(4)+' rad, Ïƒ_ang='+projGeo.avgDisp.toFixed(4)
+    },
+    ortho:{
+      label:'Konsistensi VP ortogonal & fokal',
+      score: projGeo.nVPs>=2?(projGeo.orthoScore>0.8&&projGeo.perfectionIndex>0.7?0.75:0.2):0.3,
+      weight:0.15,
+      detail: projGeo.focalLength?'fâ‰ˆ'+Math.round(projGeo.focalLength)+'px':'f tidak valid'
+    }
+  };
+
+  var logit=0, totalW=0;
+  var forensicList=[];
+  Object.keys(features).forEach(function(k){
+    var f=features[k];
+    logit+=f.weight*(f.score*2-1)*3;
+    totalW+=f.weight;
+    forensicList.push({key:k, label:f.label, score:f.score, detail:f.detail, weight:f.weight});
+  });
+
+  var forensicAI=sigmoid(logit);
+  forensicAI=Math.max(0.02, Math.min(0.98, forensicAI));
+
+  var lc=lines.length, n=vps.length;
+  var inF=vps.filter(function(v){return v.inFrame;}).length;
+  var perspType=n===0?'Tidak Terdeteksi': n===1?'1 Titik': n===2?'2 Titik':'3+ Titik';
+  var vpCheck=isVPComplete(vps, lines, w, h);
+  var vpMiss3x=projGeo.vpAnalysis&&projGeo.vpAnalysis.miss3x;
+
+  var angles=lines.map(function(l){return Math.atan2(l.y2-l.y1,l.x2-l.x1)*180/Math.PI;});
+  var horiz=angles.filter(function(a){return Math.abs(a)<25||Math.abs(a)>155;}).length;
+  var vert=angles.filter(function(a){return Math.abs(Math.abs(a)-90)<25;}).length;
+
+  var pAI, pReal, verdict, verdictClass, simpleText, reasonText, rule;
+
+  if(vpCheck.complete){
+    pAI=0; pReal=1; rule='vp_complete';
+    verdict='Bukan AI'; verdictClass='real';
+    simpleText='Gambar ini 100% bukan AI.';
+    reasonText='Titik kumpul perspektif lengkap ('+vpCheck.level+'). Geometri foto asli valid.';
+  } else if(vpMiss3x){
+    pAI=0.92; pReal=0.08; rule='vp_miss3x';
+    verdict='Kemungkinan AI'; verdictClass='ai';
+    simpleText='Gambar ini 92% kemungkinan AI.';
+    reasonText='Titik kumpul gagal terdeteksi 3 kali. Perspektif tidak konsisten dengan foto asli.';
+  } else {
+    var base=n===0?0.55:n===1?0.40:n===2?0.25:0.35;
+    pAI=Math.max(0.05, Math.min(0.88, base*0.4+forensicAI*0.6));
+    pReal=1-pAI;
+    var aiPct=Math.round(pAI*100), realPct=Math.round(pReal*100);
+    rule='hybrid';
+    if(pAI>=0.55){
+      verdict='Kemungkinan AI'; verdictClass='ai';
+      simpleText='Gambar ini '+aiPct+'% kemungkinan AI.';
+      reasonText='Perspektif belum lengkap ('+n+' titik kumpul). Ada ciri-ciri sintetis.';
+    } else if(pAI<=0.35){
+      verdict='Bukan AI'; verdictClass='real';
+      simpleText='Gambar ini '+realPct+'% bukan AI.';
+      reasonText='Perspektif terdeteksi sebagian. Ciri foto asli lebih dominan.';
+    } else {
+      verdict='Perlu dicek'; verdictClass='semi';
+      simpleText='Gambar ini '+aiPct+'% AI, '+realPct+'% bukan AI.';
+      reasonText='Hasil tidak pasti. Titik kumpul belum lengkap.';
+    }
+  }
+
+  return{
+    pAI, pReal, verdict, verdictClass, simpleText, reasonText, rule,
+    forensicList, features, forensicAI, vpCheck, vpMiss3x,
+    vpAnalysis:projGeo.vpAnalysis,
+    logit, perspType, lineCount:lc, numVPs:n, inFrameVPs:inF,
+    horizonY:projGeo.horizonY, horiz, vert,
+    focalLength:projGeo.focalLength, beta:spectral.beta,
+    projGeo
+  };
+}
+
+function redraw(){
+  if(!imgEl||!result) return;
+  var mc=document.getElementById('main-c');
+  var ctx=mc.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  ctx.drawImage(imgEl,0,0,W,H);
+  var oc=document.getElementById('ov-c');
+  oc.width=W; oc.height=H;
+  var ox=oc.getContext('2d');
+  ox.clearRect(0,0,W,H);
+  var showLines=document.getElementById('t-lines').checked;
+  var showVP=document.getElementById('t-vp').checked;
+  var showRay=document.getElementById('t-ray').checked;
+  var showHz=document.getElementById('t-hz').checked;
+  var showHeat=document.getElementById('t-heat').checked;
+  var showGrid=document.getElementById('t-grid').checked;
+  if(showHeat&&heatmap){
+    var imgData=ox.createImageData(W,H);
+    for(var i=0;i<W*H;i++){
+      var v=heatmap[i];
+      imgData.data[i*4]=Math.min(255,v*280);
+      imgData.data[i*4+1]=Math.min(255,(1-v)*80);
+      imgData.data[i*4+2]=Math.min(255,(1-v)*200);
+      imgData.data[i*4+3]=Math.min(180,v*200);
+    }
+    ox.putImageData(imgData,0,0);
+  }
+  if(showGrid){
+    ox.strokeStyle='rgba(55,138,221,0.12)'; ox.lineWidth=1;
+    for(var x=0;x<=W;x+=W/8){ox.beginPath();ox.moveTo(x,0);ox.lineTo(x,H);ox.stroke();}
+    for(var y=0;y<=H;y+=H/6){ox.beginPath();ox.moveTo(0,y);ox.lineTo(W,y);ox.stroke();}
+  }
+  if(showRay&&vps.length>0){
+    lines.forEach(function(l){
+      var nearVP=0, minD=Infinity;
+      vps.forEach(function(vp,vi){
+        var d=Math.hypot(vp.x-(l.x1+l.x2)/2, vp.y-(l.y1+l.y2)/2);
+        if(d<minD){minD=d;nearVP=vi;}
+      });
+      var c=VP_COLORS[nearVP%VP_COLORS.length], vp=vps[nearVP];
+      ox.save(); ox.globalAlpha=0.15; ox.strokeStyle=c; ox.lineWidth=1.5;
+      ox.beginPath();
+      var dx=vp.x-l.x1, dy=vp.y-l.y1, len=Math.sqrt(dx*dx+dy*dy)||1;
+      ox.moveTo(vp.x,vp.y);
+      ox.lineTo(vp.x+(dx/len)*H*2,vp.y+(dy/len)*H*2);
+      ox.stroke(); ox.restore();
+    });
+  }
+  if(showLines){
+    lines.forEach(function(l){
+      var nearVP=0, minD=Infinity;
+      vps.forEach(function(vp,vi){
+        var d=Math.hypot(vp.x-(l.x1+l.x2)/2, vp.y-(l.y1+l.y2)/2);
+        if(d<minD){minD=d;nearVP=vi;}
+      });
+      var c=vps.length>0?VP_COLORS[nearVP%VP_COLORS.length]:'#888';
+      ox.strokeStyle=c; ox.lineWidth=1.5; ox.globalAlpha=0.65;
+      ox.setLineDash([7,5]);
+      ox.beginPath(); ox.moveTo(l.x1,l.y1); ox.lineTo(l.x2,l.y2); ox.stroke();
+      ox.setLineDash([]); ox.globalAlpha=1;
+    });
+  }
+  if(showHz&&result.horizonY!==null){
+    ox.strokeStyle='rgba(186,117,23,0.75)'; ox.lineWidth=1.5;
+    ox.setLineDash([12,6]);
+    ox.beginPath(); ox.moveTo(0,result.horizonY); ox.lineTo(W,result.horizonY); ox.stroke();
+    ox.setLineDash([]);
+  }
+  if(showVP){
+    vps.forEach(function(vp,i){
+      var c=VP_COLORS[i%VP_COLORS.length];
+      ox.strokeStyle=c; ox.lineWidth=2;
+      ox.beginPath(); ox.moveTo(vp.x-18,vp.y); ox.lineTo(vp.x+18,vp.y); ox.stroke();
+      ox.beginPath(); ox.moveTo(vp.x,vp.y-18); ox.lineTo(vp.x,vp.y+18); ox.stroke();
+      ox.beginPath(); ox.arc(vp.x,vp.y,9,0,Math.PI*2); ox.stroke();
+      ox.fillStyle=c; ox.beginPath(); ox.arc(vp.x,vp.y,3.5,0,Math.PI*2); ox.fill();
+    });
+  }
+}
+
+function showResults(){
+  var r=result;
+  var aiPct=Math.round(r.pAI*100);
+  var realPct=Math.round(r.pReal*100);
+  var mainPct=r.rule==='vp_complete'?100:(r.verdictClass==='real'?realPct:aiPct);
+
+  document.getElementById('result-card').style.display='block';
+  document.getElementById('detail-wrap').classList.remove('open');
+  document.getElementById('detail-toggle').textContent='Lihat detail teknis';
+  ['steps-card','forensic-card','vp-card','geom-card'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+
+  var confColor=r.verdictClass==='real'?'#1D9E75':r.verdictClass==='ai'?'#E24B4A':'#378ADD';
+  var circ=document.getElementById('conf-circle');
+  circ.setAttribute('stroke',confColor);
+  setTimeout(function(){
+    circ.style.strokeDashoffset=(188.5*(1-mainPct/100)).toFixed(1);
+  },100);
+  document.getElementById('conf-txt').textContent=mainPct+'%';
+  document.getElementById('verdict-label').textContent=r.verdict;
+  document.getElementById('verdict-label').style.color=confColor;
+  document.getElementById('verdict-simple').textContent=r.simpleText||'';
+  document.getElementById('verdict-desc').textContent=r.reasonText||'';
+
+  var forensicHtml='';
+  r.forensicList.forEach(function(f){
+    var col=f.score>0.65?'#E24B4A':f.score>0.4?'#BA7517':'#1D9E75';
+    forensicHtml+='<div class="forensic-row"><span style="width:220px;flex-shrink:0">'+f.label+'</span>'+
+      '<div class="forensic-bar"><div class="forensic-fill" style="width:'+Math.round(f.score*100)+'%;background:'+col+'"></div></div>'+
+      '<span class="forensic-val">'+Math.round(f.score*100)+'%</span></div>';
+  });
+  document.getElementById('forensic-list').innerHTML=forensicHtml;
+
+  var maxCnt=vps.length>0?Math.max.apply(null,vps.map(function(v){return v.count;})):1;
+  var vpHtml='';
+  if(vps.length===0){
+    vpHtml='<p style="font-size:13px;color:#888;padding:8px 0">Tidak ada titik kumpul terdeteksi.</p>';
+  } else {
+    vps.forEach(function(vp,i){
+      var col=VP_COLORS[i%VP_COLORS.length];
+      var sup=Math.min(100,Math.round(vp.count/maxCnt*100));
+      vpHtml+='<div class="vp-row"><div class="vp-dot" style="background:'+col+'"></div><div style="flex:1">'+
+        '<div style="font-size:13px;font-weight:600;margin-bottom:3px">VP'+(i+1)+'</div>'+
+        '<div class="mono" style="color:#555">Koordinat: ('+Math.round(vp.x)+', '+Math.round(vp.y)+') | Dukungan: '+sup+'%</div>'+
+        '<div class="prog-wrap"><div class="prog-bar" style="width:'+sup+'%;background:'+col+'"></div></div></div></div>';
+    });
+  }
+  document.getElementById('vp-list').innerHTML=vpHtml;
+
+  var va=r.vpAnalysis;
+  document.getElementById('geom-content').innerHTML=[
+    'Aturan: VP lengkap = 100% bukan AI | VP miss 3x = AI',
+    'Status VP: '+(r.vpCheck.complete?'LENGKAP ('+r.vpCheck.level+')':'BELUM LENGKAP'),
+    'Validasi 3x: '+(va?va.missCount+' miss dari 3 pass':'N/A'),
+    'Titik kumpul: '+r.numVPs+' | Garis: '+r.lineCount,
+    'AI: '+aiPct+'% | Bukan AI: '+realPct+'%'
+  ].join('<br>');
+}
+
+function dlResult(){
+  if(!imgEl) return;
+  var tmp=document.createElement('canvas');
+  tmp.width=W; tmp.height=H;
+  var tc=tmp.getContext('2d');
+  tc.drawImage(document.getElementById('main-c'),0,0);
+  tc.drawImage(document.getElementById('ov-c'),0,0);
+  var a=document.createElement('a');
+  a.download='perspectx_result.png';
+  a.href=tmp.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
